@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.5.0
+          args:
+            - --provider=google
+            - --email-domain=*
+            - --upstream=file:///dev/null
+            - --http-address=0.0.0.0:4180
+            - --cookie-secret=$(COOKIE_SECRET)
+            - --client-id=$(CLIENT_ID)
+            - --client-secret=$(CLIENT_SECRET)
+            - --redirect-url=https://<YOUR_DOMAIN>/oauth2/callback
+          env:
+            - name: CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-secret
+                  key: client-id
+            - name: CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-secret
+                  key: client-secret
+            - name: COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-secret
+                  key: cookie-secret
+          ports:
+            - containerPort: 4180
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  namespace: default
+spec:
+  ports:
+    - port: 80
+      targetPort: 4180
+  selector:
+    app: oauth2-proxy
